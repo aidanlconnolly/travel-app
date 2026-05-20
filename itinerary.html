@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Itinerary — Travel Planner</title>
+  <!-- Replace with your Google Maps API key -->
+  <meta name="google-maps-key" content="YOUR_GOOGLE_MAPS_API_KEY">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/itinerary.css">
+  <link rel="stylesheet" href="css/print.css">
+</head>
+<body>
+
+<!-- Print-only header (hidden on screen) -->
+<div class="print-header"></div>
+
+<div class="itinerary-page">
+
+  <!-- ── Header ──────────────────────────────── -->
+  <header class="itinerary-header">
+    <a href="index.html" class="back-btn">← Trips</a>
+    <h1 class="trip-title">Loading…</h1>
+    <div class="trip-meta-pills"></div>
+    <div class="header-actions">
+      <span class="gen-status" style="font-size:.8rem;color:var(--text-muted)"></span>
+      <select id="currency-select" class="btn btn-ghost" style="padding:6px 10px">
+        <option value="USD">USD $</option>
+        <option value="EUR">EUR €</option>
+        <option value="GBP">GBP £</option>
+        <option value="JPY">JPY ¥</option>
+        <option value="AUD">AUD A$</option>
+        <option value="CAD">CAD C$</option>
+        <option value="CHF">CHF Fr</option>
+        <option value="INR">INR ₹</option>
+      </select>
+      <button id="btn-regenerate" class="btn btn-ghost" title="Regenerate itinerary">↺ Regen</button>
+      <button id="btn-share" class="btn btn-ghost" title="Share trip">🔗 Share</button>
+      <button id="btn-export" class="btn btn-ghost" title="Export as JSON">⬇ Export</button>
+      <button id="btn-print" class="btn btn-ghost" title="Print / Save as PDF">🖨 Print</button>
+      <button id="theme-toggle" aria-label="Toggle dark mode">🌙</button>
+    </div>
+  </header>
+
+  <!-- ── Main (map + day columns) ────────────── -->
+  <main class="itinerary-main">
+    <!-- Map -->
+    <div id="map">
+      <div class="map-placeholder">
+        <span style="font-size:2rem">🗺️</span>
+        <p>Map loading…</p>
+      </div>
+    </div>
+
+    <!-- Day columns -->
+    <div id="day-columns">
+      <!-- Rendered by main.js -->
+    </div>
+  </main>
+
+  <!-- ── Right sidebar: packing list ─────────── -->
+  <aside id="packing-panel">
+    <div class="panel-header">
+      <h3>🎒 Packing List</h3>
+      <button class="panel-toggle" id="packing-export-btn" title="Export packing list">⬇ PDF</button>
+    </div>
+    <div class="packing-categories">
+      <div style="padding:24px;text-align:center;color:var(--text-muted);font-size:.875rem">
+        Packing list generates after itinerary loads…
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── Bottom: budget tracker ───────────────── -->
+  <section id="budget-panel" class="collapsed">
+    <div class="budget-header">
+      <h3>💰 Budget</h3>
+      <input type="number" id="trip-budget-input" placeholder="Set total budget ($)" min="0"
+        style="padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text-primary);width:180px;font-size:.8125rem">
+      <div class="budget-total-display">$0 estimated</div>
+      <span style="margin-left:auto;font-size:.75rem;color:var(--text-muted)">▲ click to expand</span>
+    </div>
+    <div class="budget-body">
+      <div class="budget-chart-wrap">
+        <canvas id="budget-chart" width="120" height="120"></canvas>
+      </div>
+      <div class="budget-breakdown">
+        <!-- Rendered by budget.js -->
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<!-- ── API key modal ────────────────────────── -->
+<div class="modal-overlay" id="api-key-modal" role="dialog" aria-modal="true" aria-labelledby="api-key-title">
+  <div class="modal">
+    <h2 id="api-key-title">Enter your Anthropic API key</h2>
+    <p>Your key is stored only for this browser session and never sent anywhere except Anthropic's API.</p>
+    <div class="form-group">
+      <label for="api-key-input">API Key</label>
+      <input type="password" id="api-key-input" placeholder="sk-ant-…" autocomplete="off">
+    </div>
+    <button class="btn btn-primary" id="api-key-confirm" style="width:100%">Continue</button>
+  </div>
+</div>
+
+<!-- ── Share modal ──────────────────────────── -->
+<div class="modal-overlay" id="share-modal" role="dialog" aria-modal="true">
+  <div class="modal">
+    <h2>Share this trip</h2>
+    <p style="color:var(--text-secondary);font-size:.875rem;margin-bottom:16px">Anyone with this link can view your itinerary.</p>
+    <div class="form-group">
+      <label>Shareable link</label>
+      <div style="display:flex;gap:8px">
+        <input type="text" id="share-url-input" readonly style="flex:1">
+        <button id="share-url-copy" class="btn btn-ghost">Copy</button>
+      </div>
+    </div>
+    <div id="qr-container" style="margin:16px auto;width:fit-content"></div>
+    <button id="share-modal-close" class="btn btn-ghost" style="width:100%;margin-top:8px">Close</button>
+  </div>
+</div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

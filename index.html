@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Travel Planner</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/home.css">
+</head>
+<body>
+
+<!-- ── Header ─────────────────────────────────── -->
+<header class="home-header">
+  <div class="logo">✈️ Travel Planner</div>
+  <nav>
+    <button id="import-btn" class="btn btn-ghost">Import trip</button>
+    <button id="theme-toggle" aria-label="Toggle dark mode">🌙</button>
+  </nav>
+</header>
+
+<!-- ── API key modal ───────────────────────────── -->
+<div class="modal-overlay" id="api-key-modal" role="dialog" aria-modal="true" aria-labelledby="api-key-title">
+  <div class="modal">
+    <h2 id="api-key-title">Enter your Anthropic API key</h2>
+    <p>Your key is stored only for this browser session and never sent anywhere except Anthropic's API.</p>
+    <div class="form-group">
+      <label for="api-key-input">API Key</label>
+      <input type="password" id="api-key-input" placeholder="sk-ant-…" autocomplete="off">
+    </div>
+    <button class="btn btn-primary" id="api-key-confirm" style="width:100%">Continue</button>
+  </div>
+</div>
+
+<!-- ── Main ───────────────────────────────────── -->
+<main class="home-main">
+
+  <!-- Saved trips -->
+  <section>
+    <h2 class="section-title">Your trips</h2>
+    <div id="trip-grid"></div>
+  </section>
+
+  <!-- New trip form -->
+  <section class="new-trip-section">
+    <h2 class="section-title">Plan a new trip</h2>
+    <form class="new-trip-form" id="new-trip-form" novalidate>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="trip-name">Trip name</label>
+          <input type="text" id="trip-name" name="name" placeholder="e.g. Summer in Japan">
+        </div>
+        <div class="form-group">
+          <label for="destination">Destination <span style="color:#ef4444">*</span></label>
+          <input type="text" id="destination" name="destination" placeholder="e.g. Kyoto, Japan" required>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="start-date">Start date <span style="color:#ef4444">*</span></label>
+          <input type="date" id="start-date" name="startDate" required>
+        </div>
+        <div class="form-group">
+          <label for="end-date">End date <span style="color:#ef4444">*</span></label>
+          <input type="date" id="end-date" name="endDate" required>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="travelers">Travelers</label>
+          <input type="number" id="travelers" name="travelers" value="2" min="1" max="20">
+        </div>
+        <div class="form-group">
+          <label for="trip-budget">Budget (USD, optional)</label>
+          <input type="number" id="trip-budget" name="budget" placeholder="e.g. 2000" min="0">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Trip vibe</label>
+        <div class="vibe-picker">
+          <label class="vibe-card" data-vibe="adventure">
+            <input type="radio" name="vibe" value="adventure" checked>
+            <div class="vibe-icon">🏔️</div>
+            <div class="vibe-label">Adventure</div>
+          </label>
+          <label class="vibe-card" data-vibe="relaxation">
+            <input type="radio" name="vibe" value="relaxation">
+            <div class="vibe-icon">🌊</div>
+            <div class="vibe-label">Relaxation</div>
+          </label>
+          <label class="vibe-card" data-vibe="culture">
+            <input type="radio" name="vibe" value="culture">
+            <div class="vibe-icon">🏛️</div>
+            <div class="vibe-label">Culture</div>
+          </label>
+          <label class="vibe-card" data-vibe="foodie">
+            <input type="radio" name="vibe" value="foodie">
+            <div class="vibe-icon">🍜</div>
+            <div class="vibe-label">Foodie</div>
+          </label>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="trip-notes">Trip notes / preferences (optional)</label>
+        <textarea id="trip-notes" name="notes" rows="3"
+          placeholder="e.g. We love off-the-beaten-path spots. One person is vegetarian. No super early mornings."></textarea>
+      </div>
+
+      <div class="form-submit">
+        <button type="button" id="surprise-btn">🎲 Surprise me</button>
+        <button type="submit" class="btn btn-primary">Generate itinerary →</button>
+      </div>
+
+    </form>
+  </section>
+
+</main>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

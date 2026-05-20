@@ -1,0 +1,95 @@
+/* Print / PDF export styles — included on itinerary.html */
+
+@media print {
+  /* Hide all UI chrome */
+  .itinerary-header,
+  #map,
+  #packing-panel,
+  #budget-panel,
+  .header-actions,
+  .activity-stars,
+  .activity-card-footer .activity-cost,
+  .day-tab,
+  #theme-toggle,
+  .btn-ghost {
+    display: none !important;
+  }
+
+  /* Reset layout to single column */
+  .itinerary-page {
+    display: block !important;
+    height: auto !important;
+  }
+
+  .itinerary-main {
+    overflow: visible !important;
+    display: block !important;
+  }
+
+  #day-columns {
+    display: block !important;
+    overflow: visible !important;
+  }
+
+  .day-column {
+    min-width: unset !important;
+    max-width: unset !important;
+    width: 100% !important;
+    border: none !important;
+    page-break-inside: avoid;
+    break-inside: avoid;
+    margin-bottom: 24pt;
+    overflow: visible !important;
+  }
+
+  .day-column-header {
+    background: transparent !important;
+    border-bottom: 2px solid #000 !important;
+    padding: 8pt 0 !important;
+  }
+
+  .day-column-header .day-label {
+    font-size: 8pt;
+    color: #555 !important;
+  }
+
+  .day-column-header .day-theme {
+    font-size: 13pt;
+    color: #000 !important;
+  }
+
+  .activity-list {
+    overflow: visible !important;
+    padding: 0 !important;
+  }
+
+  .activity-card {
+    border: 1px solid #ccc !important;
+    box-shadow: none !important;
+    page-break-inside: avoid;
+    break-inside: avoid;
+    margin-bottom: 6pt;
+  }
+
+  .activity-desc { -webkit-line-clamp: unset !important; }
+  .activity-tip { display: block !important; }
+
+  /* Print header */
+  .print-header {
+    display: block !important;
+    padding: 0 0 16pt;
+    border-bottom: 2px solid #000;
+    margin-bottom: 16pt;
+  }
+
+  .print-header h1 { font-size: 20pt; margin-bottom: 4pt; }
+  .print-header p { font-size: 9pt; color: #555; }
+
+  body { font-size: 10pt; color: #000; background: #fff; }
+  a { color: #000; }
+
+  @page { margin: 1.5cm; }
+}
+
+/* Print header element (hidden on screen) */
+.print-header { display: none; }
