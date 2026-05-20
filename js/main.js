@@ -3,7 +3,7 @@ import {
   saveItinerary, savePackingState, saveRatings, saveCostOverrides,
   loadPrefs, savePref,
 } from './state.js';
-import { generateItinerary, generatePackingList, getDestinationPhotoUrl } from './api.js';
+import { generateItinerary, generatePackingList, getDestinationPhotoUrl, parseLooseJson } from './api.js';
 import { initDragDrop, refreshDragDrop } from './dragdrop.js';
 import { initMap, renderMarkers, focusActivity } from './map.js';
 import { initBudget, renderBudget, loadExchangeRates, setCurrency } from './budget.js';
@@ -247,17 +247,23 @@ async function startGeneration() {
   const start = new Date(currentTrip.startDate);
   const end = new Date(currentTrip.endDate);
   const days = Math.round((end - start) / 86400000) + 1;
-  const estimatedChars = days * 2200 + 1800;
+  const perDay = days > 7 ? 1500 : days > 4 ? 1900 : 2400;
+  const estimatedChars = days * perDay + 1500;
 
   let accum = '';
   const statusEl = document.querySelector('.gen-status');
 
   function updateProgress() {
     if (!statusEl) return;
-    const pct = Math.min(Math.round((accum.length / estimatedChars) * 100), 95);
+    // Count completed days via "theme": markers — a stronger signal than raw char count.
+    const dayMarkers = (accum.match(/"theme":/g) || []).length;
+    const charPct = (accum.length / estimatedChars) * 100;
+    const dayPct = (dayMarkers / days) * 100;
+    const pct = Math.min(Math.round(Math.max(charPct, dayPct)), 98);
+    const label = dayMarkers > 0 ? `Day ${Math.min(dayMarkers, days)} of ${days}` : 'Generating…';
     statusEl.innerHTML = `
       <span style="display:flex;align-items:center;gap:8px;white-space:nowrap">
-        Generating… ${pct}%
+        ${label} · ${pct}%
         <span style="display:inline-block;width:80px;height:6px;background:var(--border);border-radius:3px;overflow:hidden">
           <span style="display:block;height:100%;width:${pct}%;background:var(--vibe-color);transition:width .3s"></span>
         </span>
@@ -329,11 +335,8 @@ function tryProgressiveRender(text) {
   const count = dayMatches ? dayMatches.length : 0;
   if (count <= lastRenderedDays) return;
   lastRenderedDays = count;
-  try {
-    const clean = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
-    const parsed = JSON.parse(clean + ']}]}');
-    if (parsed.days?.length) renderItinerary(parsed, true);
-  } catch { /* not yet parseable */ }
+  const parsed = parseLooseJson(text);
+  if (parsed?.days?.length) renderItinerary(parsed, true);
 }
 
 function renderItinerary(itinerary, partial = false) {

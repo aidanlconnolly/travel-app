@@ -15,6 +15,7 @@ function buildPrompt(trip) {
   const start = new Date(trip.startDate);
   const end = new Date(trip.endDate);
   const days = Math.round((end - start) / 86400000) + 1;
+  const activitiesPerDay = days > 7 ? '3-4' : days > 4 ? '4-5' : '4-6';
 
   return `Plan a ${days}-day ${trip.vibe} trip to ${trip.destination} for ${trip.travelers} traveler(s).
 Trip name: "${trip.name}"
@@ -57,7 +58,7 @@ Return ONLY this JSON schema (no markdown, raw JSON):
   ]
 }
 
-Generate exactly ${days} day objects. Include 4-6 activities per day (mix of morning, afternoon, evening). Be specific and local.`;
+Generate exactly ${days} day objects. Include ${activitiesPerDay} activities per day (mix of morning, afternoon, evening). Keep descriptions concise (2 sentences max) and tips to one short sentence. Be specific and local.`;
 }
 
 /**
@@ -76,7 +77,7 @@ export async function generateItinerary(trip, onChunk, signal) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       model: CLAUDE_MODEL,
-      max_tokens: 8000,
+      max_tokens: 16000,
       stream: true,
       system: SYSTEM_PROMPT,
       messages: [{ role: 'user', content: buildPrompt(trip) }],
@@ -114,12 +115,53 @@ export async function generateItinerary(trip, onChunk, signal) {
     }
   }
 
-  try {
-    const stripped = fullText.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
-    return JSON.parse(stripped);
-  } catch {
+  const parsed = parseLooseJson(fullText);
+  if (!parsed || !Array.isArray(parsed.days) || !parsed.days.length) {
     throw new Error('Claude returned invalid JSON. Please try again.');
   }
+  return parsed;
+}
+
+/**
+ * Parse JSON that may be wrapped in markdown fences, prefixed with prose,
+ * or truncated mid-stream. Returns null if unrecoverable.
+ */
+export function parseLooseJson(text) {
+  let s = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
+  const firstBrace = s.indexOf('{');
+  if (firstBrace > 0) s = s.slice(firstBrace);
+
+  try { return JSON.parse(s); } catch {}
+
+  // Repair: walk the string tracking strings/escapes/brackets, then close anything still open.
+  let inString = false;
+  let escape = false;
+  const stack = [];
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (escape) { escape = false; continue; }
+    if (c === '\\') { escape = true; continue; }
+    if (c === '"') { inString = !inString; continue; }
+    if (inString) continue;
+    if (c === '{' || c === '[') stack.push(c);
+    else if (c === '}' || c === ']') stack.pop();
+  }
+
+  let repaired = s;
+  if (inString) {
+    // Drop the partial string entirely so we don't keep a half-written field.
+    const lastQuote = repaired.lastIndexOf('"');
+    repaired = repaired.slice(0, lastQuote);
+  }
+  // Drop a trailing partial token (e.g. `"time":` or `"morn`)
+  repaired = repaired.replace(/,?\s*"[^"]*"\s*:\s*[^,{\[\]}]*$/, '');
+  // Drop dangling comma
+  repaired = repaired.replace(/,\s*$/, '');
+  while (stack.length) {
+    repaired += stack.pop() === '{' ? '}' : ']';
+  }
+
+  try { return JSON.parse(repaired); } catch { return null; }
 }
 
 /**
