@@ -1,7 +1,5 @@
-import { getApiKey } from './state.js';
-
 const CLAUDE_MODEL = 'claude-sonnet-4-6';
-const CLAUDE_API = 'https://api.anthropic.com/v1/messages';
+const CLAUDE_API = '/api/generate';
 
 const SYSTEM_PROMPT = `You are an expert travel planner with deep knowledge of local hidden gems, optimal timing, and logistics for destinations worldwide. You craft personalized itineraries that balance must-see highlights with off-the-beaten-path experiences. You always consider realistic travel times between locations, opening hours, and crowd patterns.
 
@@ -72,18 +70,10 @@ Generate exactly ${days} day objects. Include 4-6 activities per day (mix of mor
  * @returns {Promise<object>} parsed itinerary JSON
  */
 export async function generateItinerary(trip, onChunk, signal) {
-  const apiKey = getApiKey();
-  if (!apiKey) throw new Error('No API key set. Please enter your Anthropic API key.');
-
   const response = await fetch(CLAUDE_API, {
     method: 'POST',
     signal,
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       model: CLAUDE_MODEL,
       max_tokens: 8000,
@@ -138,17 +128,9 @@ export async function generateItinerary(trip, onChunk, signal) {
  * @returns {Promise<object>} { Clothing: [], Tech: [], Documents: [], Health: [], Misc: [] }
  */
 export async function generatePackingList(trip, itinerary) {
-  const apiKey = getApiKey();
-  if (!apiKey) throw new Error('No API key set.');
-
   const response = await fetch(CLAUDE_API, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       model: CLAUDE_MODEL,
       max_tokens: 1500,

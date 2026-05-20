@@ -1,5 +1,5 @@
-// Minimal static file server for local development.
-// Run: node server.js
+// Local dev server. Run: node server.js
+// Set ANTHROPIC_API_KEY in your environment before starting.
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
@@ -18,12 +18,51 @@ const MIME = {
   '.json': 'application/json',
 };
 
-http.createServer((req, res) => {
+http.createServer(async (req, res) => {
+  // Proxy /api/generate → Anthropic, keeping the key server-side
+  if (req.url === '/api/generate' && req.method === 'POST') {
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Set ANTHROPIC_API_KEY in your environment before running server.js' }));
+      return;
+    }
+
+    let body = '';
+    req.on('data', d => body += d);
+    req.on('end', async () => {
+      try {
+        const upstream = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': apiKey,
+            'anthropic-version': '2023-06-01',
+          },
+          body,
+        });
+
+        res.writeHead(upstream.status, { 'Content-Type': upstream.headers.get('content-type') || 'application/json' });
+        const reader = upstream.body.getReader();
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          res.write(value);
+        }
+        res.end();
+      } catch (err) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: err.message }));
+      }
+    });
+    return;
+  }
+
+  // Static file serving
   let urlPath = req.url.split('?')[0];
   if (urlPath === '/') urlPath = '/index.html';
   const file = path.join(ROOT, urlPath);
 
-  // Prevent directory traversal
   if (!file.startsWith(ROOT)) {
     res.writeHead(403); res.end('Forbidden'); return;
   }
@@ -40,4 +79,7 @@ http.createServer((req, res) => {
   });
 }).listen(PORT, () => {
   console.log(`Travel app running at http://localhost:${PORT}`);
+  if (!process.env.ANTHROPIC_API_KEY) {
+    console.warn('⚠️  ANTHROPIC_API_KEY not set — itinerary generation will fail');
+  }
 });

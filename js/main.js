@@ -1,7 +1,7 @@
 import {
   loadTrips, saveTrip, loadTrip, deleteTrip, duplicateTrip,
   saveItinerary, savePackingState, saveRatings, saveCostOverrides,
-  loadPrefs, savePref, hasApiKey, setApiKey, getApiKey,
+  loadPrefs, savePref,
 } from './state.js';
 import { generateItinerary, generatePackingList, getDestinationPhotoUrl } from './api.js';
 import { initDragDrop, refreshDragDrop } from './dragdrop.js';
@@ -28,25 +28,6 @@ function initTheme() {
     applyTheme(!isDark);
     savePref('dark', !isDark);
   });
-}
-
-// ── API key modal ─────────────────────────────────────────
-
-function showApiKeyModal(onConfirm) {
-  const overlay = document.getElementById('api-key-modal');
-  overlay?.classList.add('open');
-  document.getElementById('api-key-confirm')?.addEventListener('click', () => {
-    const key = document.getElementById('api-key-input')?.value?.trim();
-    if (!key) return;
-    setApiKey(key);
-    overlay?.classList.remove('open');
-    onConfirm?.();
-  }, { once: true });
-}
-
-function ensureApiKey(onReady) {
-  if (hasApiKey()) { onReady(); return; }
-  showApiKeyModal(onReady);
 }
 
 // ── Vibe config ───────────────────────────────────────────
@@ -233,7 +214,7 @@ function initItinerary() {
     currentItinerary = currentTrip.itinerary;
     renderItinerary(currentItinerary);
   } else {
-    ensureApiKey(() => startGeneration());
+    startGeneration();
   }
 }
 
@@ -526,7 +507,7 @@ function attachItineraryActions() {
   });
   document.getElementById('btn-regenerate')?.addEventListener('click', () => {
     if (!confirm('Regenerate the itinerary? This will replace the current one.')) return;
-    ensureApiKey(() => startGeneration());
+    startGeneration();
   });
 }
 
