@@ -5,10 +5,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Running locally
 
 ```bash
-node server.js   # serves at http://localhost:5400
+ANTHROPIC_API_KEY=sk-ant-... node server.js   # serves at http://localhost:5400
 ```
 
-`server.js` is a zero-dependency Node static file server. Open `index.html` directly via the URL — do not double-click the file because ES module imports (`type="module"`) require HTTP.
+`server.js` is a zero-dependency Node static file server that also proxies `/api/generate` → Anthropic. Open `index.html` via the URL — do not double-click the file because ES module imports (`type="module"`) require HTTP. Without `ANTHROPIC_API_KEY` set, the server starts but itinerary generation fails.
 
 Deployed at: https://travel-app-eta-peach.vercel.app
 
@@ -25,7 +25,7 @@ Two-page vanilla JS app using native ES modules (`type="module"` in HTML). No bu
 
 | File | Owns |
 |---|---|
-| `js/state.js` | All `localStorage` reads/writes. The `Trip` typedef lives here. API key is in `sessionStorage` only (never localStorage). |
+| `js/state.js` | All `localStorage` reads/writes. The `Trip` typedef lives here. |
 | `js/api.js` | Claude streaming call (`generateItinerary`), packing list generation, Unsplash photo URL helper. |
 | `js/main.js` | Everything else — page init, routing dispatch, DOM rendering for both pages, event wiring. Imports from all other modules. |
 | `js/dragdrop.js` | Native HTML5 drag-and-drop. Mutates the live itinerary object, then calls a callback to persist. |
@@ -40,7 +40,9 @@ Every trip is stored under its UUID key in `localStorage` as a `Trip` object (se
 ### Claude API
 
 - Model: `claude-sonnet-4-6`
-- Called directly from the browser using `fetch` with `anthropic-dangerous-direct-browser-access: true`
+- The frontend calls `/api/generate` (never Anthropic directly) — the key never touches the browser
+- In production, `api/generate.js` is a Vercel serverless function that reads `ANTHROPIC_API_KEY` from Vercel environment variables
+- Locally, `server.js` proxies `/api/generate` using the same env var
 - Streamed via `ReadableStream` (not `EventSource` — the request is a POST)
 - Expects strict JSON output — the full schema is in `api.js:buildPrompt()`
 
@@ -52,8 +54,11 @@ Dark mode is toggled via `data-theme="dark"` on `<html>`, persisted to localStor
 
 ### Google Maps
 
-Set the API key in `itinerary.html` inside `<meta name="google-maps-key" content="...">`. The map degrades silently to a placeholder div when the key is missing or invalid — the rest of the app still works.
+The API key lives in `itinerary.html` as `<meta name="google-maps-key" content="...">`. It is restricted in Google Cloud Console to the Vercel domain and localhost. The map degrades silently to a placeholder div when the key is missing or invalid — the rest of the app still works.
 
 ### Deployment
 
-Static files only — Vercel serves the repo root with no build command. Push to `main` on GitHub triggers auto-redeploy.
+- Vercel serves the repo root as static files with no build command
+- `api/generate.js` is auto-detected by Vercel as a serverless function
+- `ANTHROPIC_API_KEY` must be set in Vercel project environment variables (already configured)
+- Push to `main` on GitHub triggers auto-redeploy
