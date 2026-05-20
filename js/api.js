@@ -115,7 +115,8 @@ export async function generateItinerary(trip, onChunk, signal) {
   }
 
   try {
-    return JSON.parse(fullText);
+    const stripped = fullText.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
+    return JSON.parse(stripped);
   } catch {
     throw new Error('Claude returned invalid JSON. Please try again.');
   }

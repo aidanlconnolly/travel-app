@@ -244,13 +244,32 @@ async function startGeneration() {
   const cols = document.getElementById('day-columns');
   cols.innerHTML = buildSkeletons(currentTrip);
 
+  const start = new Date(currentTrip.startDate);
+  const end = new Date(currentTrip.endDate);
+  const days = Math.round((end - start) / 86400000) + 1;
+  const estimatedChars = days * 2200 + 1800;
+
   let accum = '';
   const statusEl = document.querySelector('.gen-status');
-  if (statusEl) statusEl.textContent = 'Generating your itinerary…';
+
+  function updateProgress() {
+    if (!statusEl) return;
+    const pct = Math.min(Math.round((accum.length / estimatedChars) * 100), 95);
+    statusEl.innerHTML = `
+      <span style="display:flex;align-items:center;gap:8px;white-space:nowrap">
+        Generating… ${pct}%
+        <span style="display:inline-block;width:80px;height:6px;background:var(--border);border-radius:3px;overflow:hidden">
+          <span style="display:block;height:100%;width:${pct}%;background:var(--vibe-color);transition:width .3s"></span>
+        </span>
+      </span>`;
+  }
+
+  updateProgress();
 
   try {
     const result = await generateItinerary(currentTrip, chunk => {
       accum += chunk;
+      updateProgress();
       // Attempt progressive render once we have a parseable chunk
       tryProgressiveRender(accum);
     }, abortController.signal);
@@ -258,7 +277,7 @@ async function startGeneration() {
     currentItinerary = result;
     saveItinerary(currentTrip.id, result);
     renderItinerary(result);
-    if (statusEl) statusEl.textContent = '';
+    if (statusEl) statusEl.innerHTML = '';
 
     // Kick off packing list generation in the background
     generatePackingList(currentTrip, result)
@@ -306,16 +325,13 @@ function buildSkeletons(trip) {
 
 let lastRenderedDays = 0;
 function tryProgressiveRender(text) {
-  // Find complete day objects in the accumulating JSON
   const dayMatches = text.match(/"theme":/g);
   const count = dayMatches ? dayMatches.length : 0;
   if (count <= lastRenderedDays) return;
   lastRenderedDays = count;
-  // Full render only once we have at least 1 complete day
   try {
-    // Try to parse partial by closing open arrays
-    const closed = text + ']}]}'; // rough close
-    const parsed = JSON.parse(closed);
+    const clean = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
+    const parsed = JSON.parse(clean + ']}]}');
     if (parsed.days?.length) renderItinerary(parsed, true);
   } catch { /* not yet parseable */ }
 }
