@@ -366,9 +366,11 @@ function renderItinerary(itinerary, partial = false) {
     initDragDrop(itinerary, onDrop);
     initBudget(itinerary, currentTrip.costOverrides || {}, overrides => saveCostOverrides(currentTrip.id, overrides));
     initActivityRatings();
+    initExpandableDescriptions();
     renderMarkers(
       (itinerary.days || []).flatMap(d => d.activities || []),
-      focusActivity
+      focusActivity,
+      currentTrip.destination
     );
     renderLocalPhrases(itinerary.local_phrases);
   }
@@ -400,6 +402,17 @@ function renderActivityCard(activity, dayIndex, actIndex) {
         ${[1,2,3,4,5].map(n => `<button class="star-btn ${n <= stars ? 'filled' : ''}" data-star="${n}" aria-label="${n} star">★</button>`).join('')}
       </div>
     </div>`;
+}
+
+function initExpandableDescriptions() {
+  document.querySelectorAll('.activity-desc').forEach(el => {
+    // Tag descriptions whose content actually overflows so the "more" hint only shows when relevant.
+    if (el.scrollHeight > el.clientHeight + 1) el.classList.add('clamped');
+    el.addEventListener('click', e => {
+      e.stopPropagation();
+      el.classList.toggle('expanded');
+    });
+  });
 }
 
 function initActivityRatings() {

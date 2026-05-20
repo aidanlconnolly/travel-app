@@ -7,6 +7,8 @@ let markers = [];
 let polyline = null;
 let infoWindow = null;
 let vibeColor = '#2563eb';
+let geocoder = null;
+const geocodeCache = new Map();
 
 const CATEGORY_COLORS = {
   food: '#f59e0b',
@@ -66,6 +68,7 @@ export async function initMap(color) {
       fullscreenControl: true,
     });
     infoWindow = new google.maps.InfoWindow();
+    geocoder = new google.maps.Geocoder();
     container.querySelector('.map-placeholder')?.remove();
   } catch (err) {
     console.warn('Google Maps failed to load:', err);
@@ -82,19 +85,59 @@ function showMapPlaceholder(container) {
 }
 
 /**
+ * Geocode an activity's location string to lat/lng using the JS Maps Geocoder.
+ * Caches results, biases search by the destination, and stores the result on
+ * activity._latLng so subsequent renders skip the lookup.
+ */
+function geocodeOne(activity, destination) {
+  if (activity._latLng) return Promise.resolve(activity._latLng);
+  const query = `${activity.location || activity.title}, ${destination}`;
+  if (geocodeCache.has(query)) {
+    activity._latLng = geocodeCache.get(query);
+    return Promise.resolve(activity._latLng);
+  }
+  return new Promise(resolve => {
+    geocoder.geocode({ address: query }, (results, status) => {
+      if (status === 'OK' && results[0]) {
+        const loc = results[0].geometry.location;
+        const latLng = { lat: loc.lat(), lng: loc.lng() };
+        geocodeCache.set(query, latLng);
+        activity._latLng = latLng;
+        resolve(latLng);
+      } else {
+        resolve(null);
+      }
+    });
+  });
+}
+
+/**
  * Render numbered pins for all activities and draw a route polyline.
+ * Geocodes any activity without a cached lat/lng, then draws pins as they resolve.
  * @param {Array} activities — flat list of activity objects with .location
  * @param {Function} onMarkerClick — called with activity id when a pin is clicked
+ * @param {string} destination — used to bias geocoding (e.g. "Santorini, Greece")
  */
-export function renderMarkers(activities, onMarkerClick) {
-  if (!map) return;
+export async function renderMarkers(activities, onMarkerClick, destination = '') {
+  if (!map || !geocoder) return;
   clearMap();
+
+  // Kick off geocoding in parallel, with a small concurrency cap to avoid rate limits.
+  const CONCURRENCY = 5;
+  let cursor = 0;
+  async function worker() {
+    while (cursor < activities.length) {
+      const idx = cursor++;
+      await geocodeOne(activities[idx], destination);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(CONCURRENCY, activities.length) }, worker));
 
   const bounds = new google.maps.LatLngBounds();
   const path = [];
 
   activities.forEach((activity, index) => {
-    if (!activity._latLng) return; // geocoding hasn't run yet
+    if (!activity._latLng) return;
 
     const position = activity._latLng;
     bounds.extend(position);

@@ -77,7 +77,7 @@ export async function generateItinerary(trip, onChunk, signal) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       model: CLAUDE_MODEL,
-      max_tokens: 16000,
+      max_tokens: 20000,
       stream: true,
       system: SYSTEM_PROMPT,
       messages: [{ role: 'user', content: buildPrompt(trip) }],
@@ -119,6 +119,11 @@ export async function generateItinerary(trip, onChunk, signal) {
   if (!parsed || !Array.isArray(parsed.days) || !parsed.days.length) {
     throw new Error('Claude returned invalid JSON. Please try again.');
   }
+  // Drop activities that the repair step left half-written (missing title).
+  parsed.days = parsed.days.map(d => ({
+    ...d,
+    activities: (d.activities || []).filter(a => a && typeof a.title === 'string' && a.title.trim()),
+  }));
   return parsed;
 }
 

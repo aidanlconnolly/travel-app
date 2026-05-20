@@ -224,6 +224,20 @@
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  cursor: pointer;
+  position: relative;
+}
+.activity-desc.expanded {
+  -webkit-line-clamp: unset;
+}
+.activity-desc::after {
+  content: '';
+}
+.activity-desc:not(.expanded).clamped::after {
+  content: ' more';
+  color: var(--vibe-color);
+  font-weight: 500;
+  font-size: 0.75rem;
 }
 
 .activity-card-footer {
