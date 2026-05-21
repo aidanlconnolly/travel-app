@@ -204,7 +204,7 @@ async function initItinerary() {
 
   setVibeColor(currentTrip.vibe);
   renderTripHeader();
-  const mapReady = initMap(VIBES[currentTrip.vibe]?.color, currentTrip.destination);
+  const mapReady = initMap(VIBES[currentTrip.vibe]?.color);
   loadExchangeRates();
   initBudgetPanel();
   attachItineraryActions();
@@ -229,7 +229,7 @@ function renderTripHeader() {
   document.querySelector('.trip-meta-pills').innerHTML = `
     <span class="pill">📍 ${t.destination}</span>
     <span class="pill">📅 ${formatDate(t.startDate)} – ${formatDate(t.endDate)}</span>
-    <span class="pill">🌙 ${nights} nights</span>
+    <span class="pill">🌙 ${nights} night${nights !== 1 ? 's' : ''}</span>
     <span class="pill">👥 ${t.travelers} traveler${t.travelers !== 1 ? 's' : ''}</span>
     <span class="pill" style="background:${vibe.color};color:#fff;border-color:${vibe.color}">${vibe.emoji} ${vibe.label}</span>`;
 
@@ -311,11 +311,11 @@ function buildSkeletons(trip) {
 
   return Array.from({ length: days }, (_, i) => {
     const date = new Date(start);
-    date.setDate(date.getDate() + i);
+    date.setUTCDate(date.getUTCDate() + i);
     return `
       <div class="day-column" data-day-index="${i}">
         <div class="day-column-header">
-          <div class="day-label">Day ${i + 1} · ${date.toLocaleDateString('en', { weekday: 'short', month: 'short', day: 'numeric' })}</div>
+          <div class="day-label">Day ${i + 1} · ${date.toLocaleDateString('en', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' })}</div>
           <div class="day-theme"><span class="skeleton skeleton-line" style="width:70%;height:14px;display:inline-block"></span></div>
         </div>
         <div class="activity-list">
@@ -352,7 +352,7 @@ function renderItinerary(itinerary, partial = false) {
     return `
       <div class="day-column" data-day-index="${dayIndex}">
         <div class="day-column-header">
-          <div class="day-label">Day ${dayIndex + 1} · ${date.toLocaleDateString('en', { weekday: 'short', month: 'short', day: 'numeric' })}</div>
+          <div class="day-label">Day ${dayIndex + 1} · ${date.toLocaleDateString('en', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' })}</div>
           <div class="day-theme">${day.theme || ''}</div>
           <div class="day-total">~$${dayTotal} est.</div>
         </div>
@@ -371,8 +371,7 @@ function renderItinerary(itinerary, partial = false) {
     initExpandableDescriptions();
     renderMarkers(
       (itinerary.days || []).flatMap(d => d.activities || []),
-      focusActivity,
-      currentTrip.destination
+      focusActivity
     );
     renderLocalPhrases(itinerary.local_phrases);
   }
@@ -548,7 +547,7 @@ function attachItineraryActions() {
 // ── Utils ─────────────────────────────────────────────────
 
 function formatDate(iso) {
-  return new Date(iso).toLocaleDateString('en', { month: 'short', day: 'numeric', year: 'numeric' });
+  return new Date(iso).toLocaleDateString('en', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
 }
 
 function formatTime(hhmm) {

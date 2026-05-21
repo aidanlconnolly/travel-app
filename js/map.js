@@ -1,18 +1,20 @@
 // Google Maps JS API integration.
 // Reads the Maps API key from <meta name="google-maps-key"> on the page.
-// Falls back to a placeholder when no key is present.
+// Activity lat/lng come from Claude directly (see api.js prompt) — no Geocoding API needed.
 
 let map = null;
 let markers = [];
 let polyline = null;
 let infoWindow = null;
 let vibeColor = '#2563eb';
-let geocoder = null;
-let destinationCenter = null;
-let destinationBounds = null;
-const geocodeCache = new Map();
 
-const MAX_ACTIVITY_DISTANCE_KM = 150; // reject geocode results farther than this from the destination
+const CATEGORY_COLORS = {
+  food: '#f59e0b',
+  culture: '#8b5cf6',
+  adventure: '#f97316',
+  leisure: '#10b981',
+  transport: '#6b7280',
+};
 
 function formatTime(hhmm) {
   if (!hhmm || typeof hhmm !== 'string') return hhmm || '';
@@ -27,38 +29,15 @@ function formatTime(hhmm) {
   return `${h}:${mm} ${period}`;
 }
 
-function haversineKm(a, b) {
-  const toRad = d => (d * Math.PI) / 180;
-  const R = 6371;
-  const dLat = toRad(b.lat - a.lat);
-  const dLng = toRad(b.lng - a.lng);
-  const s = Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2;
-  return 2 * R * Math.asin(Math.sqrt(s));
-}
-
-const CATEGORY_COLORS = {
-  food: '#f59e0b',
-  culture: '#8b5cf6',
-  adventure: '#f97316',
-  leisure: '#10b981',
-  transport: '#6b7280',
-};
-
-/** @returns {string|null} */
 function getMapsKey() {
   return document.querySelector('meta[name="google-maps-key"]')?.content || null;
 }
 
-/**
- * Load the Google Maps JS API script dynamically.
- * @returns {Promise<void>}
- */
 function loadMapsScript(apiKey) {
   return new Promise((resolve, reject) => {
     if (window.google?.maps) { resolve(); return; }
     const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}`;
     script.async = true;
     script.defer = true;
     script.onload = resolve;
@@ -69,11 +48,9 @@ function loadMapsScript(apiKey) {
 
 /**
  * Initialize the map inside #map. If no API key, show placeholder.
- * Geocodes the destination first so the map opens centered on it.
  * @param {string} color — vibe accent color
- * @param {string} [destination] — trip destination, used to center the map
  */
-export async function initMap(color, destination = '') {
+export async function initMap(color) {
   vibeColor = color || vibeColor;
   const container = document.getElementById('map');
   if (!container) return;
@@ -97,23 +74,7 @@ export async function initMap(color, destination = '') {
       fullscreenControl: true,
     });
     infoWindow = new google.maps.InfoWindow();
-    geocoder = new google.maps.Geocoder();
     container.querySelector('.map-placeholder')?.remove();
-
-    if (destination) {
-      await new Promise(resolve => {
-        geocoder.geocode({ address: destination }, (results, status) => {
-          if (status === 'OK' && results[0]) {
-            const loc = results[0].geometry.location;
-            destinationCenter = { lat: loc.lat(), lng: loc.lng() };
-            destinationBounds = results[0].geometry.viewport || results[0].geometry.bounds || null;
-            if (destinationBounds) map.fitBounds(destinationBounds);
-            else { map.setCenter(destinationCenter); map.setZoom(11); }
-          }
-          resolve();
-        });
-      });
-    }
   } catch (err) {
     console.warn('Google Maps failed to load:', err);
     showMapPlaceholder(container);
@@ -129,71 +90,24 @@ function showMapPlaceholder(container) {
 }
 
 /**
- * Geocode an activity's location string to lat/lng using the JS Maps Geocoder.
- * Caches results, biases search by the destination, and stores the result on
- * activity._latLng so subsequent renders skip the lookup.
- */
-function geocodeOne(activity, destination) {
-  if (activity._latLng) return Promise.resolve(activity._latLng);
-  const query = `${activity.location || activity.title}, ${destination}`;
-  if (geocodeCache.has(query)) {
-    activity._latLng = geocodeCache.get(query);
-    return Promise.resolve(activity._latLng);
-  }
-  const request = { address: query };
-  if (destinationBounds) request.bounds = destinationBounds;
-  return new Promise(resolve => {
-    geocoder.geocode(request, (results, status) => {
-      let latLng = null;
-      if (status === 'OK' && results?.length) {
-        // Pick the first result that's reasonably close to the destination.
-        for (const r of results) {
-          const loc = r.geometry.location;
-          const candidate = { lat: loc.lat(), lng: loc.lng() };
-          if (!destinationCenter || haversineKm(candidate, destinationCenter) <= MAX_ACTIVITY_DISTANCE_KM) {
-            latLng = candidate;
-            break;
-          }
-        }
-      }
-      if (latLng) {
-        geocodeCache.set(query, latLng);
-        activity._latLng = latLng;
-      }
-      resolve(latLng);
-    });
-  });
-}
-
-/**
- * Render numbered pins for all activities and draw a route polyline.
- * Geocodes any activity without a cached lat/lng, then draws pins as they resolve.
- * @param {Array} activities — flat list of activity objects with .location
+ * Render numbered pins for activities using lat/lng provided by Claude.
+ * Activities without valid lat/lng are skipped silently.
+ * @param {Array} activities — flat list of activities with .lat and .lng
  * @param {Function} onMarkerClick — called with activity id when a pin is clicked
- * @param {string} destination — used to bias geocoding (e.g. "Santorini, Greece")
  */
-export async function renderMarkers(activities, onMarkerClick, destination = '') {
-  if (!map || !geocoder) return;
+export function renderMarkers(activities, onMarkerClick) {
+  if (!map) return;
   clearMap();
-
-  // Kick off geocoding in parallel, with a small concurrency cap to avoid rate limits.
-  const CONCURRENCY = 5;
-  let cursor = 0;
-  async function worker() {
-    while (cursor < activities.length) {
-      const idx = cursor++;
-      await geocodeOne(activities[idx], destination);
-    }
-  }
-  await Promise.all(Array.from({ length: Math.min(CONCURRENCY, activities.length) }, worker));
 
   const bounds = new google.maps.LatLngBounds();
   const path = [];
 
   activities.forEach((activity, index) => {
-    if (!activity._latLng) return;
+    const lat = Number(activity.lat);
+    const lng = Number(activity.lng);
+    if (!isFinite(lat) || !isFinite(lng) || lat === 0 && lng === 0) return;
 
-    const position = activity._latLng;
+    const position = { lat, lng };
     bounds.extend(position);
     path.push(position);
 
@@ -217,11 +131,13 @@ export async function renderMarkers(activities, onMarkerClick, destination = '')
       title: activity.title,
     });
 
+    marker.set('activityId', activity.id);
+
     marker.addListener('click', () => {
       infoWindow.setContent(`
         <div style="font-family:system-ui;padding:4px;max-width:200px">
           <strong>${activity.title}</strong>
-          <p style="font-size:12px;margin:4px 0;color:#555">${activity.location}</p>
+          <p style="font-size:12px;margin:4px 0;color:#555">${activity.location || ''}</p>
           <p style="font-size:12px;color:#555">${formatTime(activity.time)} · ${activity.duration_minutes}min</p>
         </div>`);
       infoWindow.open(map, marker);
@@ -244,20 +160,21 @@ export async function renderMarkers(activities, onMarkerClick, destination = '')
 
   if (!bounds.isEmpty()) {
     map.fitBounds(bounds);
-  } else if (destinationBounds) {
-    map.fitBounds(destinationBounds);
-  } else if (destinationCenter) {
-    map.setCenter(destinationCenter);
-    map.setZoom(11);
+    // If only one pin, fitBounds zooms in too far — cap it.
+    if (path.length === 1) {
+      google.maps.event.addListenerOnce(map, 'idle', () => {
+        if (map.getZoom() > 14) map.setZoom(14);
+      });
+    }
   }
 }
 
 /** Pan to and highlight a specific marker by activity id */
 export function focusActivity(activityId) {
   if (!map) return;
-  const idx = markers.findIndex(m => m.get('activityId') === activityId);
-  if (idx === -1) return;
-  map.panTo(markers[idx].getPosition());
+  const marker = markers.find(m => m.get('activityId') === activityId);
+  if (!marker) return;
+  map.panTo(marker.getPosition());
   map.setZoom(15);
 }
 
@@ -272,7 +189,6 @@ export function clearMap() {
 function getMapStyle() {
   const dark = document.documentElement.dataset.theme === 'dark';
   if (!dark) return [];
-  // Minimal dark style
   return [
     { elementType: 'geometry', stylers: [{ color: '#1e293b' }] },
     { elementType: 'labels.text.stroke', stylers: [{ color: '#1e293b' }] },

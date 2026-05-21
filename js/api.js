@@ -36,12 +36,14 @@ Return ONLY this JSON schema (no markdown, raw JSON):
           "time": "HH:MM",
           "period": "morning|afternoon|evening",
           "title": "Specific activity name",
-          "description": "2-3 sentence vivid description",
-          "location": "Full address or landmark name",
+          "description": "1 short sentence (max 20 words)",
+          "location": "Specific landmark or street name",
+          "lat": 36.4612,
+          "lng": 25.3756,
           "category": "food|culture|adventure|leisure|transport",
           "duration_minutes": 60,
           "estimated_cost_usd": 25,
-          "tips": "One insider tip most tourists miss"
+          "tips": "One insider tip (max 15 words)"
         }
       ]
     }
@@ -58,9 +60,13 @@ Return ONLY this JSON schema (no markdown, raw JSON):
   ]
 }
 
-Generate exactly ${days} day objects — one per calendar day from ${trip.startDate} through ${trip.endDate} inclusive. EVERY day must have ${activitiesPerDay} activities, including Day 1 (arrival) and Day ${days} (departure) — for arrival/departure days, plan around realistic check-in/check-out times but still fill the rest of the day with concrete activities. Never return an empty or skipped day. Mix morning, afternoon, and evening. Keep descriptions concise (2 sentences max) and tips to one short sentence. Be specific and local.
-
-Use 24-hour HH:MM for the "time" field — the UI formats it for display.`;
+HARD REQUIREMENTS:
+1. Generate exactly ${days} day objects — one per calendar day from ${trip.startDate} through ${trip.endDate} inclusive. Day ${days} (the FINAL/departure day) must be fully populated with ${activitiesPerDay} activities — do not run out of budget before finishing it. If you need to be terse to fit, be terse uniformly across all days.
+2. EVERY day has ${activitiesPerDay} activities. Mix morning/afternoon/evening.
+3. Every activity MUST include accurate "lat" and "lng" numbers (decimal degrees, ~4 decimal precision) for its real-world location. These are critical — the map uses them directly.
+4. All text fields ("title", "description", "location", "tips", "theme") must be plain English using ASCII/Latin characters only. Do NOT insert CJK, Cyrillic, emoji, or stray non-Latin glyphs. Greek/local names are fine in Latin transliteration (e.g. "Oia", not "Οία").
+5. Use 24-hour HH:MM for "time" — the UI formats it for display.
+6. Be specific and local. Real place names, not "find a local cafe".`;
 }
 
 /**
