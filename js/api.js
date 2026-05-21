@@ -58,7 +58,9 @@ Return ONLY this JSON schema (no markdown, raw JSON):
   ]
 }
 
-Generate exactly ${days} day objects. Include ${activitiesPerDay} activities per day (mix of morning, afternoon, evening). Keep descriptions concise (2 sentences max) and tips to one short sentence. Be specific and local.`;
+Generate exactly ${days} day objects — one per calendar day from ${trip.startDate} through ${trip.endDate} inclusive. EVERY day must have ${activitiesPerDay} activities, including Day 1 (arrival) and Day ${days} (departure) — for arrival/departure days, plan around realistic check-in/check-out times but still fill the rest of the day with concrete activities. Never return an empty or skipped day. Mix morning, afternoon, and evening. Keep descriptions concise (2 sentences max) and tips to one short sentence. Be specific and local.
+
+Use 24-hour HH:MM for the "time" field — the UI formats it for display.`;
 }
 
 /**

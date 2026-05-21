@@ -8,7 +8,34 @@ let polyline = null;
 let infoWindow = null;
 let vibeColor = '#2563eb';
 let geocoder = null;
+let destinationCenter = null;
+let destinationBounds = null;
 const geocodeCache = new Map();
+
+const MAX_ACTIVITY_DISTANCE_KM = 150; // reject geocode results farther than this from the destination
+
+function formatTime(hhmm) {
+  if (!hhmm || typeof hhmm !== 'string') return hhmm || '';
+  const m = hhmm.match(/^(\d{1,2}):(\d{2})/);
+  if (!m) return hhmm;
+  let h = parseInt(m[1], 10);
+  const mm = m[2];
+  if (isNaN(h)) return hhmm;
+  const period = h >= 12 ? 'PM' : 'AM';
+  h = h % 12;
+  if (h === 0) h = 12;
+  return `${h}:${mm} ${period}`;
+}
+
+function haversineKm(a, b) {
+  const toRad = d => (d * Math.PI) / 180;
+  const R = 6371;
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const s = Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(s));
+}
 
 const CATEGORY_COLORS = {
   food: '#f59e0b',
@@ -42,9 +69,11 @@ function loadMapsScript(apiKey) {
 
 /**
  * Initialize the map inside #map. If no API key, show placeholder.
+ * Geocodes the destination first so the map opens centered on it.
  * @param {string} color — vibe accent color
+ * @param {string} [destination] — trip destination, used to center the map
  */
-export async function initMap(color) {
+export async function initMap(color, destination = '') {
   vibeColor = color || vibeColor;
   const container = document.getElementById('map');
   if (!container) return;
@@ -58,8 +87,8 @@ export async function initMap(color) {
   try {
     await loadMapsScript(apiKey);
     map = new google.maps.Map(container, {
-      zoom: 12,
-      center: { lat: 48.8566, lng: 2.3522 }, // default Paris; will be overridden
+      zoom: 2,
+      center: { lat: 20, lng: 0 },
       styles: getMapStyle(),
       disableDefaultUI: false,
       zoomControl: true,
@@ -70,6 +99,21 @@ export async function initMap(color) {
     infoWindow = new google.maps.InfoWindow();
     geocoder = new google.maps.Geocoder();
     container.querySelector('.map-placeholder')?.remove();
+
+    if (destination) {
+      await new Promise(resolve => {
+        geocoder.geocode({ address: destination }, (results, status) => {
+          if (status === 'OK' && results[0]) {
+            const loc = results[0].geometry.location;
+            destinationCenter = { lat: loc.lat(), lng: loc.lng() };
+            destinationBounds = results[0].geometry.viewport || results[0].geometry.bounds || null;
+            if (destinationBounds) map.fitBounds(destinationBounds);
+            else { map.setCenter(destinationCenter); map.setZoom(11); }
+          }
+          resolve();
+        });
+      });
+    }
   } catch (err) {
     console.warn('Google Maps failed to load:', err);
     showMapPlaceholder(container);
@@ -96,17 +140,27 @@ function geocodeOne(activity, destination) {
     activity._latLng = geocodeCache.get(query);
     return Promise.resolve(activity._latLng);
   }
+  const request = { address: query };
+  if (destinationBounds) request.bounds = destinationBounds;
   return new Promise(resolve => {
-    geocoder.geocode({ address: query }, (results, status) => {
-      if (status === 'OK' && results[0]) {
-        const loc = results[0].geometry.location;
-        const latLng = { lat: loc.lat(), lng: loc.lng() };
+    geocoder.geocode(request, (results, status) => {
+      let latLng = null;
+      if (status === 'OK' && results?.length) {
+        // Pick the first result that's reasonably close to the destination.
+        for (const r of results) {
+          const loc = r.geometry.location;
+          const candidate = { lat: loc.lat(), lng: loc.lng() };
+          if (!destinationCenter || haversineKm(candidate, destinationCenter) <= MAX_ACTIVITY_DISTANCE_KM) {
+            latLng = candidate;
+            break;
+          }
+        }
+      }
+      if (latLng) {
         geocodeCache.set(query, latLng);
         activity._latLng = latLng;
-        resolve(latLng);
-      } else {
-        resolve(null);
       }
+      resolve(latLng);
     });
   });
 }
@@ -168,7 +222,7 @@ export async function renderMarkers(activities, onMarkerClick, destination = '')
         <div style="font-family:system-ui;padding:4px;max-width:200px">
           <strong>${activity.title}</strong>
           <p style="font-size:12px;margin:4px 0;color:#555">${activity.location}</p>
-          <p style="font-size:12px;color:#555">${activity.time} · ${activity.duration_minutes}min</p>
+          <p style="font-size:12px;color:#555">${formatTime(activity.time)} · ${activity.duration_minutes}min</p>
         </div>`);
       infoWindow.open(map, marker);
       onMarkerClick?.(activity.id);
@@ -188,7 +242,14 @@ export async function renderMarkers(activities, onMarkerClick, destination = '')
     });
   }
 
-  if (!bounds.isEmpty()) map.fitBounds(bounds);
+  if (!bounds.isEmpty()) {
+    map.fitBounds(bounds);
+  } else if (destinationBounds) {
+    map.fitBounds(destinationBounds);
+  } else if (destinationCenter) {
+    map.setCenter(destinationCenter);
+    map.setZoom(11);
+  }
 }
 
 /** Pan to and highlight a specific marker by activity id */

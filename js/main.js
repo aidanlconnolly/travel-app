@@ -197,18 +197,20 @@ let currentTrip = null;
 let currentItinerary = null;
 let abortController = null;
 
-function initItinerary() {
+async function initItinerary() {
   const tripId = new URLSearchParams(location.search).get('trip');
   currentTrip = loadTrip(tripId);
   if (!currentTrip) { location.href = 'index.html'; return; }
 
   setVibeColor(currentTrip.vibe);
   renderTripHeader();
-  initMap(VIBES[currentTrip.vibe]?.color);
+  const mapReady = initMap(VIBES[currentTrip.vibe]?.color, currentTrip.destination);
   loadExchangeRates();
   initBudgetPanel();
   attachItineraryActions();
   initCurrencySelector();
+
+  await mapReady;
 
   if (currentTrip.itinerary) {
     currentItinerary = currentTrip.itinerary;
@@ -385,7 +387,7 @@ function renderActivityCard(activity, dayIndex, actIndex) {
     <div class="activity-card" draggable="true"
          data-id="${activity.id}" data-day-index="${dayIndex}" data-activity-index="${actIndex}">
       <div class="activity-card-top">
-        <span class="activity-time">${activity.time || ''}</span>
+        <span class="activity-time">${formatTime(activity.time)}</span>
         <div class="activity-content">
           <div class="activity-title">${activity.title}</div>
           <div class="activity-desc">${activity.description || ''}</div>
@@ -547,6 +549,19 @@ function attachItineraryActions() {
 
 function formatDate(iso) {
   return new Date(iso).toLocaleDateString('en', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function formatTime(hhmm) {
+  if (!hhmm || typeof hhmm !== 'string') return hhmm || '';
+  const m = hhmm.match(/^(\d{1,2}):(\d{2})/);
+  if (!m) return hhmm;
+  let h = parseInt(m[1], 10);
+  const mm = m[2];
+  if (isNaN(h)) return hhmm;
+  const period = h >= 12 ? 'PM' : 'AM';
+  h = h % 12;
+  if (h === 0) h = 12;
+  return `${h}:${mm} ${period}`;
 }
 
 // ── Init ──────────────────────────────────────────────────
