@@ -1,27 +1,71 @@
 /* ── Itinerary page layout ────────────────────────────── */
 
 .itinerary-page {
+  --sidebar-width: 320px;
+  --map-height: 220px;
   display: grid;
   grid-template-rows: auto 1fr auto;
-  grid-template-columns: 1fr 320px;
+  grid-template-columns: 1fr 6px var(--sidebar-width);
   grid-template-areas:
-    "header  header"
-    "main    sidebar"
-    "budget  budget";
+    "header  header   header"
+    "main    resize-v sidebar"
+    "budget  budget   budget";
   height: 100vh;
   overflow: hidden;
-  transition: grid-template-columns 0.25s;
 }
 
 .itinerary-page.sidebar-hidden {
-  grid-template-columns: 1fr 0;
+  grid-template-columns: 1fr 0 0;
 }
-.itinerary-page.sidebar-hidden #packing-panel {
+.itinerary-page.sidebar-hidden #packing-panel,
+.itinerary-page.sidebar-hidden #resizer-sidebar {
   display: none;
 }
-.itinerary-page.map-hidden #map {
+.itinerary-page.map-hidden #map,
+.itinerary-page.map-hidden #resizer-map {
   display: none;
 }
+
+/* ── Resizers ─────────────────────────────────────────── */
+
+.resizer {
+  background: transparent;
+  position: relative;
+  z-index: 4;
+  transition: background 0.15s;
+}
+
+.resizer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: transparent;
+  transition: background 0.15s;
+}
+
+.resizer:hover::after,
+.resizer.dragging::after {
+  background: var(--vibe-color);
+  opacity: 0.6;
+}
+
+.resizer-v {
+  grid-area: resize-v;
+  cursor: col-resize;
+}
+
+.resizer-h {
+  height: 6px;
+  flex-shrink: 0;
+  cursor: row-resize;
+  background: var(--bg-card);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+body.resizing { cursor: inherit; user-select: none; }
+body.resizing.resizing-h { cursor: row-resize; }
+body.resizing.resizing-v { cursor: col-resize; }
 
 /* ── Header ───────────────────────────────────────────── */
 
@@ -80,10 +124,9 @@
 
 /* Map */
 #map {
-  height: 220px;
+  height: var(--map-height, 220px);
   flex-shrink: 0;
   background: var(--bg-sidebar);
-  border-bottom: 1px solid var(--border);
   position: relative;
 }
 
@@ -228,6 +271,12 @@
   border: 2px solid var(--bg-card);
   box-shadow: 0 1px 3px rgba(0,0,0,.15);
   z-index: 1;
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+.activity-number:hover {
+  transform: scale(1.15);
+  box-shadow: 0 2px 6px rgba(0,0,0,.25);
 }
 
 .activity-content { flex: 1; min-width: 0; }
@@ -533,6 +582,8 @@
       "sidebar"
       "budget";
   }
+
+  .resizer { display: none; }
 
   #packing-panel { max-height: 300px; border-left: none; border-top: 1px solid var(--border); }
 

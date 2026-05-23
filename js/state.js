@@ -74,6 +74,13 @@ export function saveCostOverrides(tripId, overrides) {
   saveTrip({ ...trip, costOverrides: overrides });
 }
 
+/** Persist destination tips per trip */
+export function saveDestinationTips(tripId, tips) {
+  const trip = loadTrip(tripId);
+  if (!trip) return;
+  saveTrip({ ...trip, destinationTips: tips });
+}
+
 // ── Prefs (theme, API key session flag) ──────────────────
 
 export function loadPrefs() {

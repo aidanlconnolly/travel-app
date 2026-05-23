@@ -1,9 +1,10 @@
 import {
   loadTrips, saveTrip, loadTrip, deleteTrip, duplicateTrip,
   saveItinerary, savePackingState, saveRatings, saveCostOverrides,
+  saveDestinationTips,
   loadPrefs, savePref,
 } from './state.js';
-import { generateItinerary, generatePackingList, getDestinationPhotoUrl, parseLooseJson } from './api.js';
+import { generateItinerary, generatePackingList, generateDestinationTips, getDestinationPhotoUrl, parseLooseJson } from './api.js';
 import { initDragDrop, refreshDragDrop } from './dragdrop.js';
 import { initMap, renderMarkers, focusActivity } from './map.js';
 import { initBudget, renderBudget, loadExchangeRates, setCurrency } from './budget.js';
@@ -379,13 +380,49 @@ function renderItinerary(itinerary, partial = false) {
     initBudget(itinerary, currentTrip.costOverrides || {}, overrides => saveCostOverrides(currentTrip.id, overrides));
     initActivityRatings();
     initExpandableDescriptions();
+    initActivityNumberClicks();
     renderMarkers(
       (itinerary.days || []).flatMap(d => d.activities || []),
       focusActivity
     );
     renderLocalPhrases(itinerary.local_phrases);
-    renderDestinationTips(itinerary.destination_tips);
+    ensureDestinationTips(itinerary.destination_tips);
   }
+}
+
+function initActivityNumberClicks() {
+  document.querySelectorAll('.activity-number').forEach(el => {
+    el.addEventListener('click', e => {
+      e.stopPropagation();
+      e.preventDefault();
+      const card = el.closest('.activity-card');
+      const activityId = card?.dataset.id;
+      if (activityId) focusActivity(activityId);
+    });
+    // Prevent the parent card from starting a drag when grabbing the badge.
+    el.addEventListener('mousedown', e => e.stopPropagation());
+  });
+}
+
+function ensureDestinationTips(tipsFromItinerary) {
+  if (Array.isArray(tipsFromItinerary) && tipsFromItinerary.length) {
+    renderDestinationTips(tipsFromItinerary);
+    return;
+  }
+  if (Array.isArray(currentTrip.destinationTips) && currentTrip.destinationTips.length) {
+    renderDestinationTips(currentTrip.destinationTips);
+    return;
+  }
+  // Fetch separately — main itinerary call sometimes truncates this section.
+  renderDestinationTips(null, { loading: true });
+  generateDestinationTips(currentTrip)
+    .then(tips => {
+      if (!tips?.length) { renderDestinationTips([]); return; }
+      currentTrip.destinationTips = tips;
+      saveDestinationTips(currentTrip.id, tips);
+      renderDestinationTips(tips);
+    })
+    .catch(() => renderDestinationTips([]));
 }
 
 function renderActivityCard(activity, dayIndex, actIndex, pinNumber) {
@@ -502,9 +539,13 @@ function renderPackingList(packingData, savedState) {
   }
 }
 
-function renderDestinationTips(tips) {
+function renderDestinationTips(tips, opts = {}) {
   const container = document.querySelector('#sidebar-tips .tips-list');
   if (!container) return;
+  if (opts.loading) {
+    container.innerHTML = `<div style="padding:18px;text-align:center;color:var(--text-muted);font-size:.875rem">Loading tips…</div>`;
+    return;
+  }
   if (!Array.isArray(tips) || !tips.length) {
     container.innerHTML = `<div style="padding:18px;text-align:center;color:var(--text-muted);font-size:.875rem">No tips available for this trip.</div>`;
     return;
@@ -578,6 +619,82 @@ function attachItineraryActions() {
     page?.classList.toggle('sidebar-hidden');
     e.currentTarget.classList.toggle('btn-primary', page?.classList.contains('sidebar-hidden'));
   });
+  document.getElementById('btn-fullscreen')?.addEventListener('click', e => {
+    const isFull = page?.classList.contains('map-hidden') && page?.classList.contains('sidebar-hidden');
+    page?.classList.toggle('map-hidden', !isFull);
+    page?.classList.toggle('sidebar-hidden', !isFull);
+    e.currentTarget.classList.toggle('btn-primary', !isFull);
+    document.getElementById('btn-toggle-map')?.classList.toggle('btn-primary', !isFull);
+    document.getElementById('btn-toggle-sidebar')?.classList.toggle('btn-primary', !isFull);
+  });
+
+  initResizers(page);
+}
+
+function initResizers(page) {
+  if (!page) return;
+  const prefs = loadPrefs();
+  if (prefs.sidebarWidth) page.style.setProperty('--sidebar-width', prefs.sidebarWidth + 'px');
+  if (prefs.mapHeight) page.style.setProperty('--map-height', prefs.mapHeight + 'px');
+
+  const sidebarEl = document.getElementById('resizer-sidebar');
+  const mapEl = document.getElementById('resizer-map');
+
+  attachResize(sidebarEl, {
+    axis: 'v',
+    min: 220,
+    max: () => Math.min(640, window.innerWidth - 360),
+    getStart: () => parseInt(getComputedStyle(page).getPropertyValue('--sidebar-width')) || 320,
+    set: w => page.style.setProperty('--sidebar-width', w + 'px'),
+    save: w => savePref('sidebarWidth', w),
+  });
+
+  attachResize(mapEl, {
+    axis: 'h',
+    min: 120,
+    max: () => Math.min(640, window.innerHeight - 240),
+    getStart: () => parseInt(getComputedStyle(page).getPropertyValue('--map-height')) || 220,
+    set: h => page.style.setProperty('--map-height', h + 'px'),
+    save: h => savePref('mapHeight', h),
+  });
+}
+
+function attachResize(el, cfg) {
+  if (!el) return;
+  el.addEventListener('mousedown', startDrag);
+  el.addEventListener('touchstart', startDrag, { passive: false });
+
+  function startDrag(e) {
+    e.preventDefault();
+    const startVal = cfg.getStart();
+    const point = e.touches ? e.touches[0] : e;
+    const startX = point.clientX;
+    const startY = point.clientY;
+    el.classList.add('dragging');
+    document.body.classList.add('resizing', cfg.axis === 'v' ? 'resizing-v' : 'resizing-h');
+
+    let current = startVal;
+    function onMove(ev) {
+      const p = ev.touches ? ev.touches[0] : ev;
+      const delta = cfg.axis === 'v' ? (startX - p.clientX) : (p.clientY - startY);
+      const max = typeof cfg.max === 'function' ? cfg.max() : cfg.max;
+      current = Math.max(cfg.min, Math.min(max, startVal + delta));
+      cfg.set(current);
+    }
+    function onUp() {
+      el.classList.remove('dragging');
+      document.body.classList.remove('resizing', 'resizing-v', 'resizing-h');
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+      window.removeEventListener('touchmove', onMove);
+      window.removeEventListener('touchend', onUp);
+      cfg.save(current);
+    }
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    window.addEventListener('touchmove', onMove, { passive: false });
+    window.addEventListener('touchend', onUp);
+  }
 }
 
 // ── Utils ─────────────────────────────────────────────────

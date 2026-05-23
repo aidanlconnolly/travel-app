@@ -227,6 +227,39 @@ Each array contains strings. Be specific to this destination and vibe. 8-12 item
   return JSON.parse(msg.content[0].text);
 }
 
+/**
+ * Generate 5-6 destination tips as a separate small API call.
+ * Run in parallel with packing list — the main itinerary call sometimes
+ * truncates tips because they live at the end of a large JSON response.
+ * @param {import('./state.js').Trip} trip
+ * @returns {Promise<string[]>}
+ */
+export async function generateDestinationTips(trip) {
+  const response = await fetch(CLAUDE_API, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: CLAUDE_MODEL,
+      max_tokens: 800,
+      system: 'You give practical, non-obvious travel advice. Respond with ONLY valid JSON.',
+      messages: [{
+        role: 'user',
+        content: `Give 5-6 highest-impact insider tips for visiting ${trip.destination} on a ${trip.vibe} trip.
+Each tip is ONE sentence (max 25 words), specific and actionable — not generic advice like "try the local food".
+Cover a mix of: money/payment, transport, etiquette/scams, timing, booking, what most tourists miss.
+
+Return ONLY this JSON (no markdown):
+{ "tips": ["tip 1", "tip 2", "tip 3", "tip 4", "tip 5"] }`,
+      }],
+    }),
+  });
+
+  if (!response.ok) throw new Error(`API error ${response.status}`);
+  const msg = await response.json();
+  const parsed = JSON.parse(msg.content[0].text);
+  return Array.isArray(parsed.tips) ? parsed.tips : [];
+}
+
 // ── Google Maps helpers ───────────────────────────────────
 
 /**

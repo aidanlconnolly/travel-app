@@ -36,6 +36,7 @@
         <option value="CHF">CHF Fr</option>
         <option value="INR">INR ₹</option>
       </select>
+      <button id="btn-fullscreen" class="btn btn-ghost" title="Fullscreen itinerary (hide map and panel)">⛶ Full</button>
       <button id="btn-toggle-map" class="btn btn-ghost" title="Hide map">🗺️ Map</button>
       <button id="btn-toggle-sidebar" class="btn btn-ghost" title="Hide packing & tips">📋 Panel</button>
       <button id="btn-regenerate" class="btn btn-ghost" title="Regenerate itinerary">↺ Regen</button>
@@ -56,11 +57,17 @@
       </div>
     </div>
 
+    <!-- Horizontal resizer between map and day columns -->
+    <div class="resizer resizer-h" id="resizer-map" title="Drag to resize map"></div>
+
     <!-- Day columns -->
     <div id="day-columns">
       <!-- Rendered by main.js -->
     </div>
   </main>
+
+  <!-- Vertical resizer between main and sidebar -->
+  <div class="resizer resizer-v" id="resizer-sidebar" title="Drag to resize panel"></div>
 
   <!-- ── Right sidebar: packing list + tips ───── -->
   <aside id="packing-panel">
