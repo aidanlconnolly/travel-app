@@ -10,6 +10,17 @@
     "budget  budget";
   height: 100vh;
   overflow: hidden;
+  transition: grid-template-columns 0.25s;
+}
+
+.itinerary-page.sidebar-hidden {
+  grid-template-columns: 1fr 0;
+}
+.itinerary-page.sidebar-hidden #packing-panel {
+  display: none;
+}
+.itinerary-page.map-hidden #map {
+  display: none;
 }
 
 /* ── Header ───────────────────────────────────────────── */
@@ -200,6 +211,25 @@
   padding-top: 2px;
 }
 
+.activity-number {
+  position: absolute;
+  top: -8px;
+  left: -8px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--vibe-color);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--bg-card);
+  box-shadow: 0 1px 3px rgba(0,0,0,.15);
+  z-index: 1;
+}
+
 .activity-content { flex: 1; min-width: 0; }
 
 .activity-category-dot {
@@ -302,7 +332,48 @@
   background: var(--bg-card);
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.sidebar-section {
+  display: flex;
+  flex-direction: column;
+  border-bottom: 1px solid var(--border);
+}
+.sidebar-section:last-child { border-bottom: none; }
+
+#sidebar-packing { flex-shrink: 0; }
+
+.tips-list {
+  padding: 12px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.tip-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.tip-item .tip-num {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--vibe-color) 18%, var(--bg-sidebar));
+  color: var(--vibe-color);
+  font-size: 0.7rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1px;
 }
 
 .panel-header {

@@ -58,6 +58,19 @@
 
       <div class="form-row">
         <div class="form-group">
+          <label for="arrival-time">Arrival time (optional)</label>
+          <input type="time" id="arrival-time" name="arrivalTime">
+          <small style="color:var(--text-muted);font-size:.75rem">When you land on day 1 — we'll skip earlier activities.</small>
+        </div>
+        <div class="form-group">
+          <label for="departure-time">Departure time (optional)</label>
+          <input type="time" id="departure-time" name="departureTime">
+          <small style="color:var(--text-muted);font-size:.75rem">When you leave on the final day — we'll wrap up before this.</small>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
           <label for="travelers">Travelers</label>
           <input type="number" id="travelers" name="travelers" value="2" min="1" max="20">
         </div>

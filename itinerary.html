@@ -36,6 +36,8 @@
         <option value="CHF">CHF Fr</option>
         <option value="INR">INR ₹</option>
       </select>
+      <button id="btn-toggle-map" class="btn btn-ghost" title="Hide map">🗺️ Map</button>
+      <button id="btn-toggle-sidebar" class="btn btn-ghost" title="Hide packing & tips">📋 Panel</button>
       <button id="btn-regenerate" class="btn btn-ghost" title="Regenerate itinerary">↺ Regen</button>
       <button id="btn-share" class="btn btn-ghost" title="Share trip">🔗 Share</button>
       <button id="btn-export" class="btn btn-ghost" title="Export as JSON">⬇ Export</button>
@@ -60,15 +62,27 @@
     </div>
   </main>
 
-  <!-- ── Right sidebar: packing list ─────────── -->
+  <!-- ── Right sidebar: packing list + tips ───── -->
   <aside id="packing-panel">
-    <div class="panel-header">
-      <h3>🎒 Packing List</h3>
-      <button class="panel-toggle" id="packing-export-btn" title="Export packing list">⬇ PDF</button>
+    <div class="sidebar-section" id="sidebar-packing">
+      <div class="panel-header">
+        <h3>🎒 Packing List</h3>
+        <button class="panel-toggle" id="packing-export-btn" title="Export packing list">⬇ PDF</button>
+      </div>
+      <div class="packing-categories">
+        <div style="padding:24px;text-align:center;color:var(--text-muted);font-size:.875rem">
+          Packing list generates after itinerary loads…
+        </div>
+      </div>
     </div>
-    <div class="packing-categories">
-      <div style="padding:24px;text-align:center;color:var(--text-muted);font-size:.875rem">
-        Packing list generates after itinerary loads…
+    <div class="sidebar-section" id="sidebar-tips">
+      <div class="panel-header">
+        <h3>💡 Tips for visiting</h3>
+      </div>
+      <div class="tips-list">
+        <div style="padding:18px;text-align:center;color:var(--text-muted);font-size:.875rem">
+          Tips appear after itinerary loads…
+        </div>
       </div>
     </div>
   </aside>

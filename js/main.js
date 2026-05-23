@@ -129,6 +129,8 @@ function initNewTripForm() {
       destination: data.get('destination'),
       startDate: data.get('startDate'),
       endDate: data.get('endDate'),
+      arrivalTime: data.get('arrivalTime') || '',
+      departureTime: data.get('departureTime') || '',
       travelers: parseInt(data.get('travelers')) || 1,
       vibe: data.get('vibe') || 'adventure',
       notes: data.get('notes'),
@@ -224,11 +226,15 @@ function renderTripHeader() {
   const t = currentTrip;
   const vibe = VIBES[t.vibe] || VIBES.adventure;
   const nights = Math.round((new Date(t.endDate) - new Date(t.startDate)) / 86400000);
+  const arrivalPill = t.arrivalTime ? `<span class="pill">🛬 Lands ${formatTime(t.arrivalTime)}</span>` : '';
+  const departurePill = t.departureTime ? `<span class="pill">🛫 Leaves ${formatTime(t.departureTime)}</span>` : '';
 
   document.querySelector('.trip-title').textContent = t.name || t.destination;
   document.querySelector('.trip-meta-pills').innerHTML = `
     <span class="pill">📍 ${t.destination}</span>
     <span class="pill">📅 ${formatDate(t.startDate)} – ${formatDate(t.endDate)}</span>
+    ${arrivalPill}
+    ${departurePill}
     <span class="pill">🌙 ${nights} night${nights !== 1 ? 's' : ''}</span>
     <span class="pill">👥 ${t.travelers} traveler${t.travelers !== 1 ? 's' : ''}</span>
     <span class="pill" style="background:${vibe.color};color:#fff;border-color:${vibe.color}">${vibe.emoji} ${vibe.label}</span>`;
@@ -346,6 +352,7 @@ function renderItinerary(itinerary, partial = false) {
   const cols = document.getElementById('day-columns');
   if (!cols) return;
 
+  let globalIdx = 0;
   cols.innerHTML = (itinerary.days || []).map((day, dayIndex) => {
     const date = new Date(day.date || currentTrip.startDate);
     const dayTotal = (day.activities || []).reduce((s, a) => s + (a.estimated_cost_usd || 0), 0);
@@ -358,7 +365,10 @@ function renderItinerary(itinerary, partial = false) {
         </div>
         <div class="activity-list">
           <div class="drop-indicator"></div>
-          ${(day.activities || []).map((activity, actIndex) => renderActivityCard(activity, dayIndex, actIndex)).join('<div class="drop-indicator"></div>')}
+          ${(day.activities || []).map((activity, actIndex) => {
+            globalIdx += 1;
+            return renderActivityCard(activity, dayIndex, actIndex, globalIdx);
+          }).join('<div class="drop-indicator"></div>')}
           <div class="drop-indicator"></div>
         </div>
       </div>`;
@@ -374,17 +384,19 @@ function renderItinerary(itinerary, partial = false) {
       focusActivity
     );
     renderLocalPhrases(itinerary.local_phrases);
+    renderDestinationTips(itinerary.destination_tips);
   }
 }
 
-function renderActivityCard(activity, dayIndex, actIndex) {
+function renderActivityCard(activity, dayIndex, actIndex, pinNumber) {
   const ratings = currentTrip.ratings || {};
   const stars = ratings[activity.id] || 0;
   const catColor = { food: '#f59e0b', culture: '#8b5cf6', adventure: '#f97316', leisure: '#10b981', transport: '#6b7280' }[activity.category] || '#ccc';
 
   return `
     <div class="activity-card" draggable="true"
-         data-id="${activity.id}" data-day-index="${dayIndex}" data-activity-index="${actIndex}">
+         data-id="${activity.id}" data-day-index="${dayIndex}" data-activity-index="${actIndex}" data-pin="${pinNumber}">
+      ${pinNumber ? `<span class="activity-number" style="background:${catColor}">${pinNumber}</span>` : ''}
       <div class="activity-card-top">
         <span class="activity-time">${formatTime(activity.time)}</span>
         <div class="activity-content">
@@ -490,6 +502,20 @@ function renderPackingList(packingData, savedState) {
   }
 }
 
+function renderDestinationTips(tips) {
+  const container = document.querySelector('#sidebar-tips .tips-list');
+  if (!container) return;
+  if (!Array.isArray(tips) || !tips.length) {
+    container.innerHTML = `<div style="padding:18px;text-align:center;color:var(--text-muted);font-size:.875rem">No tips available for this trip.</div>`;
+    return;
+  }
+  container.innerHTML = tips.map((tip, i) => `
+    <div class="tip-item">
+      <span class="tip-num">${i + 1}</span>
+      <span>${tip}</span>
+    </div>`).join('');
+}
+
 function renderLocalPhrases(phrases) {
   if (!phrases?.length) return;
   const sidebar = document.getElementById('packing-panel');
@@ -541,6 +567,16 @@ function attachItineraryActions() {
   document.getElementById('btn-regenerate')?.addEventListener('click', () => {
     if (!confirm('Regenerate the itinerary? This will replace the current one.')) return;
     startGeneration();
+  });
+
+  const page = document.querySelector('.itinerary-page');
+  document.getElementById('btn-toggle-map')?.addEventListener('click', e => {
+    page?.classList.toggle('map-hidden');
+    e.currentTarget.classList.toggle('btn-primary', page?.classList.contains('map-hidden'));
+  });
+  document.getElementById('btn-toggle-sidebar')?.addEventListener('click', e => {
+    page?.classList.toggle('sidebar-hidden');
+    e.currentTarget.classList.toggle('btn-primary', page?.classList.contains('sidebar-hidden'));
   });
 }
 

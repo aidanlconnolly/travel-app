@@ -16,11 +16,19 @@ function buildPrompt(trip) {
   const end = new Date(trip.endDate);
   const days = Math.round((end - start) / 86400000) + 1;
   const activitiesPerDay = days > 7 ? '3-4' : days > 4 ? '4-5' : '4-6';
+  const arrivalLine = trip.arrivalTime
+    ? `Arrival: traveler lands on ${trip.startDate} at ${trip.arrivalTime} local time. Do NOT schedule any activity on day 1 before ${trip.arrivalTime}; the first activity should start at least 60 minutes after arrival to allow for immigration, baggage, and transfer to lodging.`
+    : `Arrival: not specified — assume traveler is settled by 11:00 on day 1.`;
+  const departureLine = trip.departureTime
+    ? `Departure: traveler leaves on ${trip.endDate} at ${trip.departureTime} local time. Do NOT schedule any activity on the final day that ends within 3 hours of ${trip.departureTime}; wrap the day so the traveler can reach the airport/station with that buffer.`
+    : `Departure: not specified — assume traveler leaves after dinner on the final day.`;
 
   return `Plan a ${days}-day ${trip.vibe} trip to ${trip.destination} for ${trip.travelers} traveler(s).
 Trip name: "${trip.name}"
 Start date: ${trip.startDate}
 End date: ${trip.endDate}
+${arrivalLine}
+${departureLine}
 Vibe: ${trip.vibe}
 Additional notes: ${trip.notes || 'none'}
 
@@ -57,6 +65,9 @@ Return ONLY this JSON schema (no markdown, raw JSON):
   },
   "local_phrases": [
     { "phrase": "local phrase", "meaning": "English meaning", "pronunciation": "phonetic" }
+  ],
+  "destination_tips": [
+    "5-6 highest-impact insider tips for visiting ${trip.destination} — money, etiquette, transport, safety, timing, or scams. Each tip is one sentence, max 25 words, specific (not 'be respectful')."
   ]
 }
 
@@ -66,7 +77,14 @@ HARD REQUIREMENTS:
 3. Every activity MUST include accurate "lat" and "lng" numbers (decimal degrees, ~4 decimal precision) for its real-world location. These are critical — the map uses them directly.
 4. All text fields ("title", "description", "location", "tips", "theme") must be plain English using ASCII/Latin characters only. Do NOT insert CJK, Cyrillic, emoji, or stray non-Latin glyphs. Greek/local names are fine in Latin transliteration (e.g. "Oia", not "Οία").
 5. Use 24-hour HH:MM for "time" — the UI formats it for display.
-6. Be specific and local. Real place names, not "find a local cafe".`;
+6. Be specific and local. Real place names, not "find a local cafe".
+7. DISTANCE/LOGISTICS — this is critical, do NOT skip:
+   - Before placing activity N+1 after activity N on the same day, estimate the real travel time between their lat/lng (driving, walking, ferry, or transit as appropriate).
+   - The gap between activity N's end (its "time" + duration_minutes) and activity N+1's start must be ≥ that travel time PLUS at least 15 min buffer.
+   - Group same-day activities by neighborhood/region. Do NOT bounce across the destination (e.g. Fira → Oia → Fira → Akrotiri in one day). One side of the island/city per day, or chain them in a single loop.
+   - If two activities are >45 minutes of travel apart, they belong on different days unless the trip explicitly requires the long transit (e.g. a day-trip excursion). In that case, the long transit IS the activity — give it a "transport" entry with realistic duration.
+   - For activities that include the transit (e.g. an ATV ride from Oia to Perissa), the duration_minutes must cover BOTH the ride and time spent at the destination.
+8. "destination_tips" is a flat array of 5-6 strings — the most useful, non-obvious advice for visiting this place. Practical (transport hacks, payment tips, when to book, what to avoid). Not generic ("try the local food").`;
 }
 
 /**
