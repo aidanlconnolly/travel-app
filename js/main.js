@@ -628,6 +628,12 @@ function attachItineraryActions() {
     document.getElementById('btn-toggle-sidebar')?.classList.toggle('btn-primary', !isFull);
   });
 
+  document.getElementById('btn-mobile-more')?.addEventListener('click', e => {
+    const header = document.querySelector('.itinerary-header');
+    header?.classList.toggle('show-more');
+    e.currentTarget.classList.toggle('btn-primary', header?.classList.contains('show-more'));
+  });
+
   initResizers(page);
 }
 

@@ -211,3 +211,60 @@
   margin-right: auto;
 }
 #surprise-btn:hover { color: var(--text-primary); }
+
+/* ── Mobile responsive ────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .home-header {
+    padding: 14px 16px;
+    gap: 10px;
+  }
+  .home-header .logo { font-size: 1.0625rem; }
+  .home-header nav { gap: 8px; }
+
+  .home-main { padding: 24px 16px; }
+
+  .section-title { font-size: 1.25rem; margin-bottom: 16px; }
+
+  #trip-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+    margin-bottom: 32px;
+  }
+
+  .trip-card-photo { height: 120px; }
+
+  .new-trip-form { padding: 18px 16px; border-radius: 12px; }
+
+  .form-row { gap: 12px; }
+
+  .vibe-picker { gap: 8px; }
+  .vibe-card { padding: 12px 6px; }
+  .vibe-card .vibe-icon { font-size: 1.5rem; }
+  .vibe-card .vibe-label { font-size: 0.75rem; }
+
+  .form-submit {
+    flex-direction: column-reverse;
+    gap: 10px;
+    align-items: stretch;
+    margin-top: 20px;
+  }
+  .form-submit .btn-primary {
+    width: 100%;
+    padding: 14px 24px;
+    font-size: 1rem;
+  }
+  #surprise-btn {
+    margin-right: 0;
+    justify-content: center;
+    padding: 10px;
+  }
+
+  /* Larger tap targets for trip card actions */
+  .trip-card-actions button { padding: 10px 0; font-size: 0.875rem; }
+}
+
+@media (max-width: 380px) {
+  .home-header { padding: 12px 14px; }
+  .home-main { padding: 18px 14px; }
+}

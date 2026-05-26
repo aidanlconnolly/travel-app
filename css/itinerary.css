@@ -111,7 +111,12 @@ body.resizing.resizing-v { cursor: col-resize; }
   color: var(--text-secondary);
 }
 
-.header-actions { display: flex; gap: 8px; }
+.header-actions { display: flex; gap: 8px; align-items: center; }
+
+.btn .btn-icon { display: inline; }
+.btn .btn-label { display: inline; margin-left: 4px; }
+
+.mobile-only-inline { display: none; }
 
 /* ── Main content (day columns + map) ────────────────── */
 
@@ -576,39 +581,130 @@ body.resizing.resizing-v { cursor: col-resize; }
 @media (max-width: 768px) {
   .itinerary-page {
     grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr auto auto;
     grid-template-areas:
       "header"
       "main"
       "sidebar"
       "budget";
+    height: auto;
+    min-height: 100vh;
+    overflow: visible;
   }
 
   .resizer { display: none; }
 
-  #packing-panel { max-height: 300px; border-left: none; border-top: 1px solid var(--border); }
-
-  .day-column { min-width: 280px; }
-
-  /* Tab view for day columns on mobile */
-  .day-tabs {
-    display: flex;
-    overflow-x: auto;
-    gap: 0;
-    background: var(--bg-card);
-    border-bottom: 1px solid var(--border);
+  /* Compact header — wrap pills + actions, smaller fonts and paddings */
+  .itinerary-header {
+    flex-wrap: wrap;
+    padding: 10px 14px;
+    gap: 10px;
+    row-gap: 8px;
+    position: sticky;
+    top: 0;
   }
-
-  .day-tab {
-    padding: 10px 16px;
-    font-size: 0.8125rem;
-    font-weight: 500;
+  .itinerary-header .back-btn { font-size: 0.8125rem; }
+  .trip-title {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 0.9375rem;
     white-space: nowrap;
-    border-bottom: 2px solid transparent;
-    color: var(--text-secondary);
-    cursor: pointer;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
-  .day-tab.active {
-    border-bottom-color: var(--vibe-color);
-    color: var(--text-primary);
+  .trip-meta-pills {
+    order: 10;
+    flex-basis: 100%;
+    gap: 6px;
   }
+  .pill { font-size: 0.6875rem; padding: 2px 8px; }
+
+  /* Icon-only buttons in header on mobile to save space */
+  .header-actions { gap: 4px; row-gap: 6px; flex-wrap: wrap; }
+  .header-actions .btn {
+    padding: 7px 9px;
+    font-size: 0.875rem;
+    min-width: 36px;
+    justify-content: center;
+  }
+  .header-actions .btn .btn-label { display: none; }
+  .header-actions .gen-status { flex-basis: 100%; order: -1; }
+  #currency-select { padding: 6px 8px !important; font-size: 0.75rem !important; }
+
+  /* Show overflow toggle, hide secondary actions until expanded */
+  .mobile-only-inline { display: inline-flex; }
+  .header-actions .btn-secondary-action { display: none; }
+  .itinerary-header.show-more .btn-secondary-action { display: inline-flex; }
+
+  /* Map: smaller default + visible toggle */
+  #map { height: 200px; }
+  .itinerary-page.map-hidden #map { display: none; }
+
+  /* Main content scrolls naturally on mobile (no flex overflow lockup) */
+  .itinerary-main {
+    overflow: visible;
+    min-height: 60vh;
+  }
+  #day-columns {
+    overflow-x: auto;
+    flex: 1 1 auto;
+    min-height: 60vh;
+    scroll-snap-type: x mandatory;
+  }
+  .day-column {
+    min-width: 92vw;
+    max-width: 92vw;
+    scroll-snap-align: center;
+  }
+  .day-column-header { padding: 12px 14px 8px; }
+  .activity-list { padding: 10px 8px 16px; gap: 10px; }
+
+  /* Activity cards: bigger tap targets, always-visible tip */
+  .activity-card { padding: 12px; }
+  .activity-tip { display: block; }
+  .activity-number { width: 24px; height: 24px; font-size: 0.75rem; }
+
+  /* Sidebar: stacks below; let it size to content, no fixed scroll */
+  #packing-panel {
+    max-height: none;
+    border-left: none;
+    border-top: 1px solid var(--border);
+    overflow-y: visible;
+  }
+  .packing-categories { overflow-y: visible; max-height: none; }
+
+  /* Budget panel: stack header/body, keep input usable */
+  #budget-panel {
+    max-height: none;
+    overflow: visible;
+  }
+  #budget-panel.collapsed { max-height: 48px; overflow: hidden; }
+  .budget-header {
+    gap: 10px;
+    padding: 10px 14px;
+    flex-wrap: wrap;
+  }
+  .budget-header h3 { font-size: 0.875rem; }
+  #trip-budget-input {
+    width: auto !important;
+    flex: 1 1 120px;
+    min-width: 0;
+  }
+  .budget-header .budget-total-display { font-size: 0.8125rem; }
+  .budget-header > span:last-child { display: none; }
+  .budget-body {
+    flex-direction: column;
+    height: auto;
+  }
+  .budget-chart-wrap { padding: 12px; justify-content: center; }
+  .budget-breakdown { padding: 0 14px 14px; }
+
+  /* Modal: a bit more breathing room */
+  .modal { padding: 22px; }
+}
+
+@media (max-width: 380px) {
+  .itinerary-header { padding: 8px 10px; gap: 6px; }
+  .header-actions .btn { padding: 6px 7px; min-width: 32px; }
+  .trip-title { font-size: 0.875rem; }
 }
